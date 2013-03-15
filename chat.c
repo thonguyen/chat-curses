@@ -15,8 +15,11 @@
  *
  * =====================================================================================
  */
+#include <stdio.h>
+#include <pthread.h> 
 #include "chat.h"
 #include "window.h"
+#include "csocket.h"
 
 int main(int argc, char ** argv){
     WINDOW *main_win;
@@ -24,7 +27,8 @@ int main(int argc, char ** argv){
     WINDOW *chat_win;
     int startx, starty, width, height;
     int ch;
-
+    pthread_t send_thread, receive_thread;
+    void *send_message_hello(), *receive_message_hello();
     initscr();      
     cbreak();
     refresh();
@@ -35,6 +39,12 @@ int main(int argc, char ** argv){
     chat_win = create_newwin(5, COLS , LINES - 5, 0); 
     mvprintw(LINES - 5, 0, "Send Window");
     move(LINES - 4, 1);
+    pthread_create(&send_thread,NULL,send_message_hello,NULL);
+    pthread_create(&receive_thread,NULL,receive_message_hello,NULL);
+    pthread_join(send_thread,NULL);
+    pthread_join(receive_thread,NULL);
+//    send_message_hello();
+//    receive_message_hello();
     getch();
     destroy_win(chat_win);
     endwin();
