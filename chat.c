@@ -16,37 +16,50 @@
  * =====================================================================================
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h> 
+#include <string.h>
 #include "chat.h"
 #include "window.h"
 #include "csocket.h"
+#include "interface.h"
+#include "buddy.h"
 
+
+
+WINDOW *main_win, *buddy_win, *chat_win;
+buddy buddies[252];
+
+//extern int buddy_count;
 int main(int argc, char ** argv){
-    WINDOW *main_win;
-    WINDOW *buddy_win;
-    WINDOW *chat_win;
-    int startx, starty, width, height;
-    int ch;
-    pthread_t send_thread, receive_thread;
-    void *send_message_hello(), *receive_message_hello();
-    initscr();      
-    cbreak();
-    refresh();
-    buddy_win = create_newwin(LINES, 20, 0, COLS - 20); 
-    mvprintw(0, COLS - 20, "Buddy list");
-    move(LINES - 4, 1);
+    if(argc < 2){
+        perror("Enter nickname!");
+        exit(1);
+    }
+    char *nick = (char *)malloc((strlen(argv[1]) + 1)*sizeof(char));
+    memset(nick, '\0', strlen(argv[1]) + 1);
+    strncpy(nick, argv[1], strlen(argv[1]));
 
-    chat_win = create_newwin(5, COLS , LINES - 5, 0); 
-    mvprintw(LINES - 5, 0, "Send Window");
-    move(LINES - 4, 1);
-    pthread_create(&send_thread,NULL,send_message_hello,NULL);
-    pthread_create(&receive_thread,NULL,receive_message_hello,NULL);
-    pthread_join(send_thread,NULL);
-    pthread_join(receive_thread,NULL);
-//    send_message_hello();
-//    receive_message_hello();
-    getch();
-    destroy_win(chat_win);
-    endwin();
+    create_interface(); //initialise l'interface
+    printHelp();
+    pthread_t send_thread,          //envoyer des messages bonjour 
+              receive_thread,       //recevoir et traiter les messages multicast 
+              input_thread,         //manipuler les entrées de l'utilisateur
+              receive_tcp_thread,   //recevoir et traiter les messages tcp
+              ui_thread;            //gérer l'interface
+    void *send_message_hello(), *receive_message_hello(), *handle_input(), *receive_tcp();
+    void *updateBuddyList();
+    pthread_create(&send_thread, NULL, (void *)send_message_hello, (void *)&nick);
+    pthread_create(&receive_thread, NULL, (void *)receive_message_hello,NULL);
+    pthread_create(&input_thread, NULL, (void *) handle_input, (void *) &nick);
+    pthread_create(&receive_tcp_thread, NULL, (void *)receive_tcp , NULL);
+    pthread_create(&ui_thread, NULL, (void *)updateBuddyList, NULL);
+    pthread_join(send_thread, NULL);
+    pthread_join(receive_thread, NULL);
+    pthread_join(input_thread, NULL);
+    pthread_join(receive_tcp_thread, NULL);
+    pthread_join(ui_thread, NULL);
+    
+    //delete_interface();
     return 0;
 }
